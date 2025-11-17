@@ -24,10 +24,11 @@ namespace debug {
 
         // singleton
         Manager() {}
+    public:
         Manager(const Manager&) = delete;
         Manager& operator=(const Manager&) = delete;
 
-    public:
+
         static Manager& get() {
             static Manager m;
             return m;
