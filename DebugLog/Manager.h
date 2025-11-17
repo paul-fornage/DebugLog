@@ -117,7 +117,7 @@ namespace debug {
             b_ignore |= (level == LogLevel::LVL_NONE);
             if (b_ignore) return;
 
-            string_t header = generate_header(level);
+            const char* header = generate_header(level);
             if ((int)level <= (int)log_lvl) {
                 print(header);  // to avoid delimiter after header
                 println(std::forward<Args>(args)...);
@@ -382,17 +382,35 @@ namespace debug {
 
         // ===== other utilities =====
 
-        string_t generate_header(const LogLevel lvl) const {
-            string_t header;
+        #ifndef DEBUGLOG_ERROR_HEADER
+        #define DEBUGLOG_ERROR_HEADER "[ERROR] "
+        #endif
+        #ifndef DEBUGLOG_WARN_HEADER
+        #define DEBUGLOG_WARN_HEADER "[WARN] "
+        #endif
+        #ifndef DEBUGLOG_INFO_HEADER
+        #define DEBUGLOG_INFO_HEADER "[INFO] "
+        #endif
+        #ifndef DEBUGLOG_DEBUG_HEADER
+        #define DEBUGLOG_DEBUG_HEADER "[DEBUG] "
+        #endif
+        #ifndef DEBUGLOG_TRACE_HEADER
+        #define DEBUGLOG_TRACE_HEADER "[TRACE] "
+        #endif
+        #ifndef DEBUGLOG_NONE_HEADER
+        #define DEBUGLOG_NONE_HEADER "[NONE] "
+        #endif
+
+        static const char* generate_header(const LogLevel lvl) {
             switch (lvl) {
-                case LogLevel::LVL_ERROR: header = "[ERROR] "; break;
-                case LogLevel::LVL_WARN: header = "[WARN] "; break;
-                case LogLevel::LVL_INFO: header = "[INFO] "; break;
-                case LogLevel::LVL_DEBUG: header = "[DEBUG] "; break;
-                case LogLevel::LVL_TRACE: header = "[TRACE] "; break;
-                default: header = ""; break;
+            case LogLevel::LVL_ERROR: return DEBUGLOG_ERROR_HEADER;
+            case LogLevel::LVL_WARN:  return DEBUGLOG_WARN_HEADER;
+            case LogLevel::LVL_INFO:  return DEBUGLOG_INFO_HEADER;
+            case LogLevel::LVL_DEBUG: return DEBUGLOG_DEBUG_HEADER;
+            case LogLevel::LVL_TRACE: return DEBUGLOG_TRACE_HEADER;
+            case LogLevel::LVL_NONE:  return DEBUGLOG_NONE_HEADER;
             }
-            return header;
+            return "";
         }
     };
 
