@@ -5,6 +5,10 @@
 #include "Types.h"
 #include "FileLogger.h"
 
+#ifdef DEBUGLOG_USE_COLORS
+#include "Colors.h"
+#endif
+
 namespace arx {
 namespace debug {
 
@@ -120,8 +124,16 @@ namespace debug {
 
             const char* header = generate_header(level);
             if ((int)level <= (int)log_lvl) {
+#ifdef DEBUGLOG_USE_COLORS
+                print(generate_color_tag(level));
+#endif
                 print(header);  // to avoid delimiter after header
+#ifdef DEBUGLOG_USE_COLORS
+                print(std::forward<Args>(args)...);
+                println(DEBUGLOG_CLEAR_COLOR_TAG);
+#else
                 println(std::forward<Args>(args)...);
+#endif
             }
 #ifdef ARDUINO
             if (!logger) return;
