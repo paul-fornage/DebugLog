@@ -4,7 +4,7 @@
 
 #ifdef ARDUINO
 #include <Arduino.h>
-#include <stdarg.h>
+#include <cstdarg>
 #else
 #include <iostream>
 #include <string>
