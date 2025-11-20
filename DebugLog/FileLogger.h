@@ -54,6 +54,13 @@ namespace debug {
             file = fs->open(path.c_str(), mode);
         }
 
+        template <typename FileMode>
+        FsFileLogger(FsType& fsclass, const char* path, const FileMode& mode)
+        : fs(&fsclass), path(path) {
+            file = fs->open(path, mode);
+        }
+
+
         virtual ~FsFileLogger() {
             if (file) file.close();
         }
