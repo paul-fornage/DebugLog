@@ -9,11 +9,14 @@ namespace debug {
 
 #ifdef ARDUINO
 
+    // TODO: Maybe remove the v-table indirection? This should not need to be runtime polymorphic. If it is, maybe
+    //  reduce the vtable entries to save memory. Really only need a write function
+    //  like the arduino Print inheritors
     struct FileLogger {
         virtual ~FileLogger() {}
 
         virtual bool is_open() = 0;
-        virtual void flush() = 0;
+        virtual bool flush() = 0;
 
         virtual size_t print(const __FlashStringHelper*) = 0;
         virtual size_t print(const String&) = 0;
@@ -41,6 +44,23 @@ namespace debug {
         virtual size_t println(void) = 0;
     };
 
+template <typename T>
+typename std::enable_if<std::is_same<
+        decltype(std::declval<T&>().flush()),void
+    >::value, bool>::type
+flush_helper(T& f) {
+    f.flush();
+    return false;   // always false for void-returning flush
+}
+
+template <typename T>
+typename std::enable_if<std::is_same<
+    decltype(std::declval<T&>().flush()), bool
+    >::value, bool>::type
+flush_helper(T& f) {
+    return f.flush();  // use the underlying bool (or bool-convertible) result
+}
+
     template <typename FsType, typename FileType>
     class FsFileLogger : public FileLogger {
         FsType* fs;
@@ -65,33 +85,33 @@ namespace debug {
             if (file) file.close();
         }
 
-        virtual bool is_open() override { return file ? true : false; }  // bool file() isn't const...
-        virtual void flush() override { file.flush(); }
+        bool is_open() override { return file ? true : false; }  // bool file() isn't const...
+        bool flush() override { return flush_helper(file); }
 
-        virtual size_t print(const __FlashStringHelper* x) override { return file.print(x); }
-        virtual size_t print(const String& x) override { return file.print(x); }
-        virtual size_t print(const char x[]) override { return file.print(x); }
-        virtual size_t print(const char x) override { return file.print(x); }
-        virtual size_t print(const unsigned char x, const int b = DEC) override { return file.print(x, b); }
-        virtual size_t print(const int x, const int b = DEC) override { return file.print(x, b); }
-        virtual size_t print(const unsigned int x, const int b = DEC) override { return file.print(x, b); }
-        virtual size_t print(const long x, const int b = DEC) override { return file.print(x, b); }
-        virtual size_t print(const unsigned long x, const int b = DEC) override { return file.print(x, b); }
-        virtual size_t print(const double x, const int b = 2) override { return file.print(x, b); }
-        virtual size_t print(const Printable& x) override { return file.print(x); }
+        size_t print(const __FlashStringHelper* x) override { return file.print(x); }
+        size_t print(const String& x) override { return file.print(x); }
+        size_t print(const char x[]) override { return file.print(x); }
+        size_t print(const char x) override { return file.print(x); }
+        size_t print(const unsigned char x, const int b = DEC) override { return file.print(x, b); }
+        size_t print(const int x, const int b = DEC) override { return file.print(x, b); }
+        size_t print(const unsigned int x, const int b = DEC) override { return file.print(x, b); }
+        size_t print(const long x, const int b = DEC) override { return file.print(x, b); }
+        size_t print(const unsigned long x, const int b = DEC) override { return file.print(x, b); }
+        size_t print(const double x, const int b = 2) override { return file.print(x, b); }
+        size_t print(const Printable& x) override { return file.print(x); }
 
-        virtual size_t println(const __FlashStringHelper* x) override { return file.println(x); }
-        virtual size_t println(const String& x) override { return file.println(x); }
-        virtual size_t println(const char x[]) override { return file.println(x); }
-        virtual size_t println(const char x) override { return file.println(x); }
-        virtual size_t println(const unsigned char x, const int b = DEC) override { return file.println(x, b); }
-        virtual size_t println(const int x, const int b = DEC) override { return file.println(x, b); }
-        virtual size_t println(const unsigned int x, const int b = DEC) override { return file.println(x, b); }
-        virtual size_t println(const long x, const int b = DEC) override { return file.println(x, b); }
-        virtual size_t println(const unsigned long x, const int b = DEC) override { return file.println(x, b); }
-        virtual size_t println(const double x, const int b = 2) override { return file.println(x, b); }
-        virtual size_t println(const Printable& x) override { return file.println(x); }
-        virtual size_t println(void) override { return file.println(); }
+        size_t println(const __FlashStringHelper* x) override { return file.println(x); }
+        size_t println(const String& x) override { return file.println(x); }
+        size_t println(const char x[]) override { return file.println(x); }
+        size_t println(const char x) override { return file.println(x); }
+        size_t println(const unsigned char x, const int b = DEC) override { return file.println(x, b); }
+        size_t println(const int x, const int b = DEC) override { return file.println(x, b); }
+        size_t println(const unsigned int x, const int b = DEC) override { return file.println(x, b); }
+        size_t println(const long x, const int b = DEC) override { return file.println(x, b); }
+        size_t println(const unsigned long x, const int b = DEC) override { return file.println(x, b); }
+        size_t println(const double x, const int b = 2) override { return file.println(x, b); }
+        size_t println(const Printable& x) override { return file.println(x); }
+        size_t println(void) override { return file.println(); }
     };
 
 #endif  // ARDUINO

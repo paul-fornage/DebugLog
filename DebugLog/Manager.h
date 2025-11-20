@@ -100,8 +100,9 @@ namespace debug {
             return false;
         }
 
-        void flush() {
-            if (logger) logger->flush();
+        bool flush() {
+            if (logger) {return logger->flush();}
+            return false;
         }
 
         void close() {
