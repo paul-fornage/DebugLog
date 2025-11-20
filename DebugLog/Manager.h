@@ -72,6 +72,13 @@ namespace debug {
             logger = new FsFileLogger<FsType, File>(s, path, mode);
             b_auto_save = auto_save;
         }
+
+        template <typename FsType, typename FileMode>
+        void attach(FsType& s, const char* path, const FileMode& mode, const bool auto_save) {
+            close();
+            logger = new FsFileLogger<FsType, File>(s, path, mode);
+            b_auto_save = auto_save;
+        }
 #endif
 
         void assertion(const bool b, const char* file, const int line, const char* func, const char* expr, const String& msg = "") {
