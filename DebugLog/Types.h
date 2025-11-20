@@ -47,8 +47,8 @@ namespace debug {
     using string_t = std::string;
 #endif
 
-    enum class LogLevel {
-        LVL_NONE,
+    enum class LogLevel: uint8_t {
+        LVL_NONE = 0,
         LVL_ERROR,
         LVL_WARN,
         LVL_INFO,

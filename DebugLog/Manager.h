@@ -3,7 +3,6 @@
 #define DEBUGLOG_MANAGER_H
 
 #include "Types.h"
-#include "FileLogger.h"
 
 #ifdef DEBUGLOG_USE_COLORS
 #include "Colors.h"
@@ -19,8 +18,8 @@ namespace debug {
         bool b_base_reset {true};
 
 #ifdef ARDUINO
-        Stream* stream {&Serial};
-        FileLogger* logger {nullptr};
+        Stream* primary_stream {&Serial};
+        Stream* file_stream {nullptr};
         LogLevel file_lvl {DEBUGLOG_DEFAULT_FILE_LEVEL};
         bool b_auto_save {false};
         LogPrecision log_precision {LogPrecision::TWO};
@@ -56,60 +55,30 @@ namespace debug {
 
 #ifdef ARDUINO
 
-        ~Manager() {
-            if (logger) delete logger;
+
+        void attach_primary_stream(Stream& s) {
+            primary_stream = &s;
         }
 
-        void attach(Stream& s) {
-            stream = &s;
-        }
-
-#if defined(FILE_WRITE) && defined(DEBUGLOG_ENABLE_FILE_LOGGER)
-        // TODO: `File` class is always valid for various file systems??
-        template <typename FsType, typename FileMode>
-        void attach(FsType& s, const String& path, const FileMode& mode, const bool auto_save) {
-            close();
-            logger = new FsFileLogger<FsType, File>(s, path, mode);
+        void attach_file_stream(Stream& s, const bool auto_save) {
+            file_stream = &s;
             b_auto_save = auto_save;
         }
 
-        template <typename FsType, typename FileMode>
-        void attach(FsType& s, const char* path, const FileMode& mode, const bool auto_save) {
-            close();
-            logger = new FsFileLogger<FsType, File>(s, path, mode);
-            b_auto_save = auto_save;
-        }
-#endif
-
-        void assertion(const bool b, const char* file, const int line, const char* func, const char* expr, const String& msg = "") {
+        void assertion(const bool b, const char* file, const int line, const char* func, const char* expr, const String& msg = "") const {
             if (!b) {
                 string_t str = string_t("[ASSERT] ") + file + string_t(" ") + line + string_t(" ") + func + string_t(" : ") + expr;
                 if (msg.length()) str += string_t(" => ") + msg;
-                stream->println(str);
-                if (logger) {
-                    logger->println(str);
+                primary_stream->println(str);
+                if (file_stream) {
+                    file_stream->println(str);
+                    file_stream->flush();
                 }
-                close();
-                while (true)
-                    ;
+                while (true){yield();}
             }
         }
 
-        bool is_open() const {
-            if (logger) return logger->is_open();
-            return false;
-        }
 
-        bool flush() {
-            if (logger) {return logger->flush();}
-            return false;
-        }
-
-        void close() {
-            flush();
-            if (logger) delete logger;
-            logger = nullptr;
-        }
 
         LogLevel file_level() const {
             return file_lvl;
@@ -131,7 +100,7 @@ namespace debug {
             if (b_ignore) return;
 
             const char* header = generate_header(level);
-            if ((int)level <= (int)log_lvl) {
+            if (static_cast<uint8_t>(level) <= static_cast<uint8_t>(log_lvl)) {
 #ifdef DEBUGLOG_USE_COLORS
                 print(generate_color_tag(level));
 #endif
@@ -144,8 +113,8 @@ namespace debug {
 #endif
             }
 #ifdef ARDUINO
-            if (!logger) return;
-            if ((int)level <= (int)file_lvl) {
+            if (!file_stream) return;
+            if (static_cast<uint8_t>(level) <= static_cast<uint8_t>(file_lvl)) {
                 print_file(header);  // to avoid delimiter after header
                 println_file(std::forward<Args>(args)...);
             }
@@ -161,9 +130,9 @@ namespace debug {
         template <typename Head, typename... Tail>
         void print(const Head& head, Tail&&... tail) {
 #ifdef ARDUINO
-            print_one(head, stream);
+            print_one(head, primary_stream);
             if (sizeof...(tail) != 0)
-                print_one(delim, stream);
+                print_one(delim, primary_stream);
 #else
             print_one(head);
             if (sizeof...(tail) != 0)
@@ -174,7 +143,7 @@ namespace debug {
 
         void println() {
 #ifdef ARDUINO
-            print_one("\n", stream);
+            print_one("\n", primary_stream);
 #else
             print_one("\n");
 #endif
@@ -184,9 +153,9 @@ namespace debug {
         template <typename Head, typename... Tail>
         void println(const Head& head, Tail&&... tail) {
 #ifdef ARDUINO
-            print_one(head, stream);
+            print_one(head, primary_stream);
             if (sizeof...(tail) != 0)
-                print_one(delim, stream);
+                print_one(delim, primary_stream);
 #else
             print_one(head);
             if (sizeof...(tail) != 0)
@@ -197,31 +166,31 @@ namespace debug {
 
 #ifdef ARDUINO
         void print_file() {
-            if (!logger) return;
-            if (b_auto_save) logger->flush();
+            if (!file_stream) return;
+            if (b_auto_save) file_stream->flush();
             print();
         }
 
         template <typename Head, typename... Tail>
         void print_file(const Head& head, Tail&&... tail) {
-            if (!logger) return;
-            print_one(head, logger);
+            if (!file_stream) return;
+            print_one(head, file_stream);
             if (sizeof...(tail) != 0)
-                print_one(delim, logger);
+                print_one(delim, file_stream);
             print_file(std::forward<Tail>(tail)...);
         }
 
         void println_file() {
-            if (!logger) return;
-            print_one("\n", logger);
+            if (!file_stream) return;
+            print_one("\n", file_stream);
             print_file();
         }
 
         template <typename Head, typename... Tail>
         void println_file(const Head& head, Tail&&... tail) {
-            print_one(head, logger);
+            print_one(head, file_stream);
             if (sizeof...(tail) != 0)
-                print_one(delim, logger);
+                print_one(delim, file_stream);
             println_file(std::forward<Tail>(tail)...);
         }
 #endif
@@ -235,21 +204,21 @@ namespace debug {
 
         // print with base
         template <typename S>
-        void print_one(const signed char head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const signed char head, S* s) { s->print(head, static_cast<uint8_t>(log_base)); }
         template <typename S>
-        void print_one(const unsigned char head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const unsigned char head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const short head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const short head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const unsigned short head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const unsigned short head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const int head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const int head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const unsigned int head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const unsigned int head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const long head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const long head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
-        void print_one(const unsigned long head, S* s) { s->print(head, (int)log_base); }
+        void print_one(const unsigned long head, S* s) { s->print(head, static_cast<int>(log_base)); }
         template <typename S>
         void print_one(const LogBase& head, S*) {
             log_base = head;
@@ -257,9 +226,9 @@ namespace debug {
 
         // print with precision
         template <typename S>
-        void print_one(const float head, S* s) { s->print(head, (int)log_precision); }
+        void print_one(const float head, S* s) { s->print(head, static_cast<int>(log_precision)); }
         template <typename S>
-        void print_one(const double head, S* s) { s->print(head, (int)log_precision); }
+        void print_one(const double head, S* s) { s->print(head, static_cast<int>(log_precision)); }
         template <typename S>
         void print_one(const LogPrecision& head, S*) {
             log_precision = head;

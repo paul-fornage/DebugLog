@@ -34,21 +34,15 @@ using DebugLogPrecision = arx::debug::LogPrecision;
 #define LOG_SET_BASE_RESET(b) DebugLog::Manager::get().base_reset(b)
 
 #ifdef ARDUINO
-#define LOG_ATTACH_SERIAL(s) DebugLog::Manager::get().attach(s)
-#define LOG_ATTACH_STREAM(s) DebugLog::Manager::get().attach(s)
+#define LOG_ATTACH_PRIMARY_STREAM(s) DebugLog::Manager::get().attach_primary_stream(s)
+#define LOG_ATTACH_FS_AUTO(s) DebugLog::Manager::get().attach_file_stream(s, true)
+#define LOG_ATTACH_FS_MANUAL(s) DebugLog::Manager::get().attach_file_stream(s, false)
 // PRINT_FILE and PRINTLN_FILE are always enabled regardless of file_level
 // PRINT_FILE and PRINTLN_FILE do NOT print to Serial
 #define PRINT_FILE(...) DebugLog::Manager::get().print_file(__VA_ARGS__)
 #define PRINTLN_FILE(...) DebugLog::Manager::get().println_file(__VA_ARGS__)
-#define LOG_FILE_FLUSH() DebugLog::Manager::get().flush()
-#define LOG_FILE_CLOSE() DebugLog::Manager::get().close()
-#define LOG_FILE_IS_OPEN() DebugLog::Manager::get().is_open()
 #define LOG_FILE_GET_LEVEL() DebugLog::Manager::get().file_level()
 #define LOG_FILE_SET_LEVEL(l) DebugLog::Manager::get().file_level(l)
-#if defined(FILE_WRITE) && defined(DEBUGLOG_ENABLE_FILE_LOGGER)
-#define LOG_ATTACH_FS_AUTO(fs, path, mode) DebugLog::Manager::get().attach(fs, path, mode, true)
-#define LOG_ATTACH_FS_MANUAL(fs, path, mode) DebugLog::Manager::get().attach(fs, path, mode, false)
-#endif
 #endif  // ARDUINO
 
 #include "DebugLogRestoreState.h"
